@@ -28,6 +28,7 @@ def syntheticData(data, count):
     data = descretize(data, 1, count)
     return data
 
+# Simple function to help discretize the pokemon data
 def pokemon(data, count):
     for i in range(7):
         data = data.sort_values(by = i)
@@ -54,9 +55,9 @@ def entropy(data):
 
 # Calculate Information gain for an attribute
 def informationGain(parentEntropy, attribute):
-    lastIndex = 0 # Keep track of the first index for creating a sublist of the data that are in the same bin
-    count = 1 # Keep track of the number of data points that are in the same bin
-    total = 0 # Keep track of the total entropy for the given attribute
+    lastIndex = 0   # Keep track of the first index for creating a sublist of the data that are in the same bin
+    count = 1       # Keep track of the number of data points that are in the same bin
+    total = 0       # Keep track of the total entropy for the given attribute
 
     # Iterate through every value for the given attribute
     for i in range(1, len(attribute) + 1):
@@ -73,22 +74,20 @@ def informationGain(parentEntropy, attribute):
 
 # Find the best attribute to split on
 def bestAttribute(data, parentEntropy):
-    myAttribute = data.columns[0] # Set the best attribute as the first one available
-    temp = data.iloc[[0, -1]].sort_values(by = data.columns[0]) # Create a sub matrix for that attribute
+    myAttribute = 0 # Set the best attribute as the first one available
+    temp = data.iloc[[0, -1]].sort_values(by = 0) # Create a sub matrix for that attribute
     maxInfo = informationGain(parentEntropy, temp) # Calculate the information gain for that attribute
 
     # Repeat the above steps for every available attribute
     for i in range(1, len(data.columns)-1):
         if i in data.columns:
-    
-            temp = data.iloc[:, [i, -1]].sort_values(by = data.columns[i])
+            temp = data.iloc[:, [i, -1]].sort_values(by = i)
             infoGain = informationGain(parentEntropy, temp)
 
             # If the new attribute has a higher information gain, make it current best
             if infoGain > maxInfo:
-                
                 maxInfo = infoGain
-                myAttribute = data.columns[i]
+                myAttribute = i
     
     # Return the best attribute to split on
     return myAttribute
@@ -132,21 +131,26 @@ class Tree:
         # Find the best attribute to split on
         myAttribute = bestAttribute(data, parent_entrophy)
         newEntropy = entropy(data.iloc[:, -1].tolist())
+        
+        myRoot.attribute = myAttribute                  # Set the nodes attribute
+        data = data.sort_values(by = myAttribute)       # Sort the data based on the best attribute
+        newData = data.drop(columns = myAttribute)      # Remove the best attribute from the data 
 
-        myRoot.attribute = myAttribute    # Set the nodes attribute
-        data = data.sort_values(by = myAttribute)    # Sort the data based on the best attribute
-        newData = data.drop(columns = myAttribute)    # Remove the best attrbiute from the data 
+        # Rename the columns
+        for i in range(len(newData.columns)):
+            newData = newData.rename(columns={newData.columns[i]: i})
+
 
         lastIndex = 0
         curVal = 1
 
         # Iterate through every value for the given attribute
         for i in range(0, len(data)+1):
-
+            
             # For each empty data set create a branch that holds the most common label
-            while i != 0 and curVal <= self.num_attributes and i < len(data) and int(data.iat[i-1, myAttribute]) != curVal:
-                    myRoot.branches.append(Node(value=mostCommon))
-                    curVal += 1
+            while i != 0 and curVal <= self.num_attributes and i <= len(data) and int(data.iat[i-1, myAttribute]) != curVal:
+                myRoot.branches.append(Node(value=mostCommon))
+                curVal += 1
 
             # If the current value is in the same bin as the previous continue
             if i != 0 and i < len(data) and data.iat[i, myAttribute] == data.iat[i-1, myAttribute]:
@@ -155,7 +159,12 @@ class Tree:
                 myRoot.branches.append(self._ID3(newData.iloc[lastIndex:i], class_label, not_class_label, newEntropy, depth+1))
                 curVal += 1
                 lastIndex = i
-        print(curVal, self.num_attributes)
+        
+        # Make a branch for the remaining values not found
+        while curVal <= self.num_attributes:
+            myRoot.branches.append(Node(value=mostCommon))
+            curVal += 1
+
         return myRoot 
 
     # Return the most common label
@@ -169,22 +178,28 @@ class Tree:
 
     # Traverse through the tree to predict the label
     def traverseTree(self, data, node):
-        if node.leafNode():
+        if node.leafNode(): 
             return node.value
-        #print(int(data.iat[0, node.attribute])-1, len(node.branches))
-        return self.traverseTree(data.drop(columns=node.attribute), node.branches[int(data.iat[0, node.attribute])-1])
+
+        # Create new data
+        newData = data.drop(columns=node.attribute)
+        for i in range(len(newData.columns)):
+            newData = newData.rename(columns={newData.columns[i]: i})
+
+        # Traverse the tree with the new data
+        return self.traverseTree(newData, node.branches[int(data.iat[0, node.attribute])-1])
 
 def main():
     # Read in and discretize the synthetic data files
     data = []
-    data.append(syntheticData(pd.read_csv('synthetic-1.csv', header=None), 20))
-    data.append(syntheticData(pd.read_csv('synthetic-2.csv', header=None), 20))
-    data.append(syntheticData(pd.read_csv('synthetic-3.csv', header=None), 40))
-    data.append(syntheticData(pd.read_csv('synthetic-4.csv', header=None), 20))
+    data.append(syntheticData(pd.read_csv('synthetic-1.csv', header=None), 10))
+    data.append(syntheticData(pd.read_csv('synthetic-2.csv', header=None), 10))
+    data.append(syntheticData(pd.read_csv('synthetic-3.csv', header=None), 10))
+    data.append(syntheticData(pd.read_csv('synthetic-4.csv', header=None), 10))
 
     # For every synthetic data file
     for i in data:
-        myTree = Tree(max_depth=3, num_attributes=10)     # Create a Tree
+        myTree = Tree(max_depth=3, num_attributes=20)     # Create a Tree
         parent = entropy(i.iloc[:, -1].tolist())          # Calculate parent entropy
         myTree.growMyTree(i, 1, 0, parent, 0)             # Build the Tree
 
@@ -200,8 +215,7 @@ def main():
 if __name__ == "__main__":
     main()
 
-    data = pd.read_csv('pokemonStats.csv', header=None)
-    data = data.iloc[1:, :]
+    data = pd.read_csv('pokemonStats.csv', skiprows=1, header=None)
     
     label = pd.read_csv('pokemonLegendary.csv', header=None)
     data.insert(44, 44, label.iloc[1:, -1].tolist())
@@ -210,9 +224,9 @@ if __name__ == "__main__":
             data.iat[i, -1] = 1
         else: data.iat[i, -1] = 0
     
-    data = pokemon(data, 105)
+    data = pokemon(data, 70)
 
-    myTree = Tree(max_depth=3, num_attributes=14)     # Create a Tree
+    myTree = Tree(max_depth=3, num_attributes=21)        # Create a Tree
     parent = entropy(data.iloc[:, -1].tolist())          # Calculate parent entropy
     myTree.growMyTree(data, 1, 0, parent, 0)             # Build the Tree
 
