@@ -73,21 +73,22 @@ def informationGain(parentEntropy, attribute):
 
 # Find the best attribute to split on
 def bestAttribute(data, parentEntropy):
-    myAttribute = 0 # Set the best attribute as the first one available
+    myAttribute = data.columns[0] # Set the best attribute as the first one available
     temp = data.iloc[[0, -1]].sort_values(by = data.columns[0]) # Create a sub matrix for that attribute
     maxInfo = informationGain(parentEntropy, temp) # Calculate the information gain for that attribute
+
     # Repeat the above steps for every available attribute
     for i in range(1, len(data.columns)-1):
         if i in data.columns:
-            print(data.columns[i], i) 
-            print(data.iloc[[i, -1]].head())
-            temp = data.iloc[[i, -1]].sort_values(by = data.columns[i])
+    
+            temp = data.iloc[:, [i, -1]].sort_values(by = data.columns[i])
             infoGain = informationGain(parentEntropy, temp)
 
             # If the new attribute has a higher information gain, make it current best
             if infoGain > maxInfo:
+                
                 maxInfo = infoGain
-                myAttribute = i
+                myAttribute = data.columns[i]
     
     # Return the best attribute to split on
     return myAttribute
@@ -124,10 +125,7 @@ class Tree:
         elif not_class_label not in data.iloc[:, -1].tolist():
             myRoot.value = class_label
             return myRoot
-        elif len(data.columns) == 1:
-            myRoot.value = mostCommon
-            return myRoot
-        elif depth >= self.max_depth:
+        elif len(data.columns) == 1 or depth >= self.max_depth:
             myRoot.value = mostCommon
             return myRoot
 
@@ -136,28 +134,28 @@ class Tree:
         newEntropy = entropy(data.iloc[:, -1].tolist())
 
         myRoot.attribute = myAttribute    # Set the nodes attribute
-        data = data.sort_values(by = data.columns[myAttribute])    # Sort the data based on the best attribute
-        newData = data.drop(columns= data.columns[myAttribute])    # Remove the best attrbiute from the data 
+        data = data.sort_values(by = myAttribute)    # Sort the data based on the best attribute
+        newData = data.drop(columns = myAttribute)    # Remove the best attrbiute from the data 
 
         lastIndex = 0
         curVal = 1
 
         # Iterate through every value for the given attribute
-        for i in range(0, len(data) + 1):
+        for i in range(0, len(data)+1):
 
             # For each empty data set create a branch that holds the most common label
-            while i != 0 and curVal <= self.num_attributes and i < len(data) and int(data.iat[i-1, data.columns[myAttribute]]) != curVal:
+            while i != 0 and curVal <= self.num_attributes and i < len(data) and int(data.iat[i-1, myAttribute]) != curVal:
                     myRoot.branches.append(Node(value=mostCommon))
                     curVal += 1
 
             # If the current value is in the same bin as the previous continue
-            if i != 0 and i < len(data) and data.iat[i, data.columns[myAttribute]] == data.iat[i-1, data.columns[myAttribute]]:
+            if i != 0 and i < len(data) and data.iat[i, myAttribute] == data.iat[i-1, myAttribute]:
                 continue
             elif i != 0: # Else create a new branch of the node
                 myRoot.branches.append(self._ID3(newData.iloc[lastIndex:i], class_label, not_class_label, newEntropy, depth+1))
                 curVal += 1
                 lastIndex = i
-
+        print(curVal, self.num_attributes)
         return myRoot 
 
     # Return the most common label
@@ -173,7 +171,8 @@ class Tree:
     def traverseTree(self, data, node):
         if node.leafNode():
             return node.value
-        return self.traverseTree(data.drop(columns=data.columns[node.attribute]), node.branches[int(data.iat[0, data.columns[node.attribute]])-1])
+        #print(int(data.iat[0, node.attribute])-1, len(node.branches))
+        return self.traverseTree(data.drop(columns=node.attribute), node.branches[int(data.iat[0, node.attribute])-1])
 
 def main():
     # Read in and discretize the synthetic data files
