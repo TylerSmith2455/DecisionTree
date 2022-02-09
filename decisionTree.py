@@ -1,12 +1,15 @@
 import pandas as pd
 import math
+import numpy as np
 from collections import Counter
+import matplotlib.pyplot as plt
+import PIL
 
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 
-# Descretize synthetic data by placing data in 10 bins of 20
+# Descretize synthetic data by placing data in bins
 def descretize(data, index, count):
     counter, value = 1, 1
     # Iterate through each row of the given column, placing the value in a bin
@@ -189,17 +192,40 @@ class Tree:
         # Traverse the tree with the new data
         return self.traverseTree(newData, node.branches[int(data.iat[0, node.attribute])-1])
 
+def approximateImage(myTree):
+    im = PIL.Image.new(mode="RGB", size=(200, 200))
+
+    x = [0,1,2,3,4,5,6,7,8,9,10]
+    y = [0,1,2,3,4,5,6,7,8,9,10]
+    lastX = 0
+    lastY = 0
+    for i in range(0,10):
+        for j in range(0, 10):
+            if myTree.traverseTree(pd.DataFrame(data={0: i+1, 1: j+1}, index=[0]), myTree.root) == 1:
+                for a in range(lastX*10, i*10):
+                    for b in range(lastY*10, j*10):
+                        im[a, b] = (0,0,255)
+            else: 
+                for a in range(lastX*10, i*10):
+                    for b in range(lastY*10, j*10):
+                        im[a, b] = (255,0,0)
+            lastY +=1
+        lastY = 0
+        lastX += 1
+    
+    im.show()
+
 def main():
     # Read in and discretize the synthetic data files
     data = []
-    data.append(syntheticData(pd.read_csv('synthetic-1.csv', header=None), 10))
-    data.append(syntheticData(pd.read_csv('synthetic-2.csv', header=None), 10))
-    data.append(syntheticData(pd.read_csv('synthetic-3.csv', header=None), 10))
-    data.append(syntheticData(pd.read_csv('synthetic-4.csv', header=None), 10))
+    data.append(syntheticData(pd.read_csv('synthetic-1.csv', header=None), 20))
+    data.append(syntheticData(pd.read_csv('synthetic-2.csv', header=None), 20))
+    data.append(syntheticData(pd.read_csv('synthetic-3.csv', header=None), 20))
+    data.append(syntheticData(pd.read_csv('synthetic-4.csv', header=None), 20))
 
     # For every synthetic data file
     for i in data:
-        myTree = Tree(max_depth=3, num_attributes=20)     # Create a Tree
+        myTree = Tree(max_depth=3, num_attributes=10)     # Create a Tree
         parent = entropy(i.iloc[:, -1].tolist())          # Calculate parent entropy
         myTree.growMyTree(i, 1, 0, parent, 0)             # Build the Tree
 
@@ -211,20 +237,18 @@ def main():
 
         print(100*(count/len(i)))
 
-
-if __name__ == "__main__":
-    main()
-
+    # Read in pokemon stats and add class label to last column
     data = pd.read_csv('pokemonStats.csv', skiprows=1, header=None)
-    
     label = pd.read_csv('pokemonLegendary.csv', header=None)
     data.insert(44, 44, label.iloc[1:, -1].tolist())
+
+    # Make True = 1 and False = 0
     for i in range(len(data)):
         if str(data.iat[i, -1]) == "True":
             data.iat[i, -1] = 1
         else: data.iat[i, -1] = 0
-    
-    data = pokemon(data, 70)
+
+    data = pokemon(data, 70)                             # Discretize data
 
     myTree = Tree(max_depth=3, num_attributes=21)        # Create a Tree
     parent = entropy(data.iloc[:, -1].tolist())          # Calculate parent entropy
@@ -236,5 +260,14 @@ if __name__ == "__main__":
         if data.iat[j, -1] == myTree.traverseTree(data.iloc[[j]], myTree.root):
             count += 1
             
-
     print(100*(count/len(data)))
+
+if __name__ == "__main__":
+    #main()
+
+    
+    data = syntheticData(pd.read_csv('synthetic-1.csv', header=None), 20)
+    myTree = Tree(max_depth=3, num_attributes=10)     # Create a Tree
+    parent = entropy(data.iloc[:, -1].tolist())          # Calculate parent entropy
+    myTree.growMyTree(data, 1, 0, parent, 0)             # Build the Tree
+    approximateImage(myTree)
