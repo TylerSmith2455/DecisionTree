@@ -199,21 +199,21 @@ def approximateImage(myTree):
     y = [0,1,2,3,4,5,6,7,8,9,10]
     lastX = 0
     lastY = 0
-    for i in range(0,10):
-        for j in range(0, 10):
-            if myTree.traverseTree(pd.DataFrame(data={0: i+1, 1: j+1}, index=[0]), myTree.root) == 1:
-                for a in range(lastX*10, i*10):
-                    for b in range(lastY*10, j*10):
-                        im[a, b] = (0,0,255)
+    for i in range(1,11):
+        for j in range(1, 11):
+            if myTree.traverseTree(pd.DataFrame(data={0: i, 1: j}, index = [0]), myTree.root) == 1:
+                for a in range(lastX*20, i*20):
+                    for b in range(lastY*20, j*20):
+                        im.putpixel((a,b), (0,0,255))
             else: 
-                for a in range(lastX*10, i*10):
-                    for b in range(lastY*10, j*10):
-                        im[a, b] = (255,0,0)
+                for a in range(lastX*20, i*20):
+                    for b in range(lastY*20, j*20):
+                        im.putpixel((a, b), (255,0,0))
             lastY +=1
         lastY = 0
         lastX += 1
     
-    im.show()
+    return im
 
 def main():
     # Read in and discretize the synthetic data files
@@ -265,9 +265,30 @@ def main():
 if __name__ == "__main__":
     #main()
 
-    
+    data1 = pd.read_csv('synthetic-1.csv', header=None)
     data = syntheticData(pd.read_csv('synthetic-1.csv', header=None), 20)
-    myTree = Tree(max_depth=3, num_attributes=10)     # Create a Tree
+    #plt.scatter(data.iloc[:, 0].tolist(), data.iloc[:, 1].tolist())
+    #plt.show()
+    myTree = Tree(max_depth=3, num_attributes=20)     # Create a Tree
     parent = entropy(data.iloc[:, -1].tolist())          # Calculate parent entropy
     myTree.growMyTree(data, 1, 0, parent, 0)             # Build the Tree
-    approximateImage(myTree)
+    im = approximateImage(myTree)
+    xValuesFail = []
+    yValuesFail = []
+    xValuesSuccess = []
+    yValuesSuccess = []
+    for i in range(len(data1)):
+        if int(data1.iat[i,2]) == 0:
+            xValuesFail.append(data1.iat[i,0])
+            yValuesFail.append(data1.iat[i,1])
+        else:
+            xValuesSuccess.append(data1.iat[i,0])
+            yValuesSuccess.append(data1.iat[i,1])
+    plt.plot(xValuesFail,yValuesFail,'s',color="#e75e5e", ms=8, mec="red", markeredgewidth=0.0, zorder=10)
+    plt.plot(xValuesSuccess,yValuesSuccess,'s',color="#77d582", ms=8, mec="red", markeredgewidth=0.0, zorder=5)
+    axes = plt.gca()
+    y_min, y_max = axes.get_ylim()
+    x_min, x_max = axes.get_xlim()
+
+    plt.imshow(im, extent=[x_min,x_max,y_min,y_max])
+    plt.show()
