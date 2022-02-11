@@ -194,38 +194,30 @@ class Tree:
 
 def approximateImage(myTree):
     im = PIL.Image.new(mode="RGB", size=(200, 200))
-
-    x = [0,1,2,3,4,5,6,7,8,9,10]
-    y = [0,1,2,3,4,5,6,7,8,9,10]
-    lastX = 0
-    lastY = 0
-    for i in range(1,11):
-        for j in range(1, 11):
+    for i in range(1,21):
+        for j in range(1, 21):
             if myTree.traverseTree(pd.DataFrame(data={0: i, 1: j}, index = [0]), myTree.root) == 1:
-                for a in range(lastX*20, i*20):
-                    for b in range(lastY*20, j*20):
-                        im.putpixel((a,b), (0,0,255))
+                for a in range((i-1)*10, i*10):
+                    for b in range((j-1)*10, j*10):
+                        im.putpixel((a,199-b), (0,0,255))
             else: 
-                for a in range(lastX*20, i*20):
-                    for b in range(lastY*20, j*20):
-                        im.putpixel((a, b), (255,0,0))
-            lastY +=1
-        lastY = 0
-        lastX += 1
+                for a in range((i-1)*10, i*10):
+                    for b in range((j-1)*10, j*10):
+                        im.putpixel((a,199-b), (255,0,0))
     
     return im
 
 def main():
     # Read in and discretize the synthetic data files
     data = []
-    data.append(syntheticData(pd.read_csv('synthetic-1.csv', header=None), 20))
-    data.append(syntheticData(pd.read_csv('synthetic-2.csv', header=None), 20))
-    data.append(syntheticData(pd.read_csv('synthetic-3.csv', header=None), 20))
-    data.append(syntheticData(pd.read_csv('synthetic-4.csv', header=None), 20))
+    data.append(syntheticData(pd.read_csv('synthetic-1.csv', header=None), 10))
+    data.append(syntheticData(pd.read_csv('synthetic-2.csv', header=None), 10))
+    data.append(syntheticData(pd.read_csv('synthetic-3.csv', header=None), 10))
+    data.append(syntheticData(pd.read_csv('synthetic-4.csv', header=None), 10))
 
     # For every synthetic data file
     for i in data:
-        myTree = Tree(max_depth=3, num_attributes=10)     # Create a Tree
+        myTree = Tree(max_depth=3, num_attributes=20)     # Create a Tree
         parent = entropy(i.iloc[:, -1].tolist())          # Calculate parent entropy
         myTree.growMyTree(i, 1, 0, parent, 0)             # Build the Tree
 
@@ -265,10 +257,9 @@ def main():
 if __name__ == "__main__":
     #main()
 
-    data1 = pd.read_csv('synthetic-1.csv', header=None)
-    data = syntheticData(pd.read_csv('synthetic-1.csv', header=None), 20)
-    #plt.scatter(data.iloc[:, 0].tolist(), data.iloc[:, 1].tolist())
-    #plt.show()
+    data1 = pd.read_csv('synthetic-3.csv', header=None)
+    
+    data = syntheticData(pd.read_csv('synthetic-3.csv', header=None), 10)
     myTree = Tree(max_depth=3, num_attributes=20)     # Create a Tree
     parent = entropy(data.iloc[:, -1].tolist())          # Calculate parent entropy
     myTree.growMyTree(data, 1, 0, parent, 0)             # Build the Tree
@@ -284,8 +275,9 @@ if __name__ == "__main__":
         else:
             xValuesSuccess.append(data1.iat[i,0])
             yValuesSuccess.append(data1.iat[i,1])
-    plt.plot(xValuesFail,yValuesFail,'s',color="#e75e5e", ms=8, mec="red", markeredgewidth=0.0, zorder=10)
-    plt.plot(xValuesSuccess,yValuesSuccess,'s',color="#77d582", ms=8, mec="red", markeredgewidth=0.0, zorder=5)
+    plt.plot(xValuesFail,yValuesFail,'o',color="#000000")
+    plt.plot(xValuesSuccess,yValuesSuccess,'o',color="#77d582")
+    plt.margins(x=0, y=0)
     axes = plt.gca()
     y_min, y_max = axes.get_ylim()
     x_min, x_max = axes.get_xlim()
