@@ -33,7 +33,7 @@ def syntheticData(data, count):
 
 # Simple function to help discretize the pokemon data
 def pokemon(data, count):
-    for i in range(7):
+    for i in range(8):
         data = data.sort_values(by = i)
         data = descretize(data, i, count)
 
@@ -192,7 +192,32 @@ class Tree:
         # Traverse the tree with the new data
         return self.traverseTree(newData, node.branches[int(data.iat[0, node.attribute])-1])
 
-def approximateImage(myTree):
+# Function to create a plot for the dataset and its Tree 
+def approximateImage(myTree, data, filename):
+    # Compute all points that have class label of 0 and 1
+    xValuesFail = []
+    yValuesFail = []
+    xValuesSuccess = []
+    yValuesSuccess = []
+    for i in range(len(data)):
+        if int(data.iat[i,2]) == 0:
+            xValuesFail.append(data.iat[i,0])
+            yValuesFail.append(data.iat[i,1])
+        else:
+            xValuesSuccess.append(data.iat[i,0])
+            yValuesSuccess.append(data.iat[i,1])
+
+    # Plot class label 1 points as green nad label 0 points as black
+    plt.plot(xValuesFail,yValuesFail,'o',color="#000000",label="Class Label 0")
+    plt.plot(xValuesSuccess,yValuesSuccess,'o',color="#77d582",label="Class Label 1")
+    plt.legend(bbox_to_anchor=(0,1.02,1,0.2), loc="lower left",mode="expand", borderaxespad=0, ncol=3)
+
+    plt.margins(x=0, y=0)
+    axes = plt.gca()
+    y_min, y_max = axes.get_ylim()
+    x_min, x_max = axes.get_xlim()
+
+    # Create an image for the background of the plot
     im = PIL.Image.new(mode="RGB", size=(200, 200))
     for i in range(1,21):
         for j in range(1, 21):
@@ -205,29 +230,69 @@ def approximateImage(myTree):
                     for b in range((j-1)*10, j*10):
                         im.putpixel((a,199-b), (255,0,0))
     
-    return im
+    plt.imshow(im, extent=[x_min,x_max,y_min,y_max])
+    plt.title(filename, y=1.1)
+    plt.xlabel('Attribute 1')
+    plt.ylabel('Attribute 2')
+    plt.show()
 
-def main():
-    # Read in and discretize the synthetic data files
-    data = []
-    data.append(syntheticData(pd.read_csv('synthetic-1.csv', header=None), 10))
-    data.append(syntheticData(pd.read_csv('synthetic-2.csv', header=None), 10))
-    data.append(syntheticData(pd.read_csv('synthetic-3.csv', header=None), 10))
-    data.append(syntheticData(pd.read_csv('synthetic-4.csv', header=None), 10))
-
-    # For every synthetic data file
-    for i in data:
-        myTree = Tree(max_depth=3, num_attributes=20)     # Create a Tree
-        parent = entropy(i.iloc[:, -1].tolist())          # Calculate parent entropy
-        myTree.growMyTree(i, 1, 0, parent, 0)             # Build the Tree
+# Extra Credit Function
+# Find the best number of bins for the synthetic data
+def bestBinNumber(data):
+    bins = [5, 10, 20] # Calculate the accuracy for 5, 10, or 20 bins
+    res = 0
+    accuracy = 0
+    for i in bins:
+        data = syntheticData(data, len(data)//i)
+        myTree = Tree(max_depth=3, num_attributes=i)     # Create a Tree
+        parent = entropy(data.iloc[:, -1].tolist())          # Calculate parent entropy
+        myTree.growMyTree(data, 1, 0, parent, 0)             # Build the Tree
 
         count = 0
         # Traverse the tree for every piece of data and calculate the accuracy of our Tree
-        for j in range(len(i)):
-            if int(i.iat[j, -1]) == myTree.traverseTree(i.iloc[[j]], myTree.root):
+        for j in range(len(data)):
+            if int(data.iat[j, -1]) == myTree.traverseTree(data.iloc[[j]], myTree.root):
                 count += 1
 
-        print(100*(count/len(i)))
+        percent = 100*(count/len(data))
+
+         # If this bin number produces a better accuracy update the variables
+        if percent >= accuracy:
+            accuracy = percent
+            res = i
+    return res
+
+
+def main():
+    filenames = ["synthetic-1.csv", "synthetic-2.csv", "synthetic-3.csv", "synthetic-4.csv"]
+
+    # Read in and discretize the synthetic data files
+    filenames = ["synthetic-1.csv", "synthetic-2.csv", "synthetic-3.csv", "synthetic-4.csv"]
+    data = []
+    data.append(pd.read_csv('synthetic-1.csv', header=None))
+    data.append(pd.read_csv('synthetic-2.csv', header=None))
+    data.append(pd.read_csv('synthetic-3.csv', header=None))
+    data.append(pd.read_csv('synthetic-4.csv', header=None))
+
+    # For every synthetic data file
+    for i in range(len(data)):
+        # Extra Credit: Find best number of bins
+        bin = bestBinNumber(data[i])
+
+        newData = syntheticData(data[i], len(data[i])//bin)
+        myTree = Tree(max_depth=3, num_attributes=bin)          # Create a Tree
+        parent = entropy(newData.iloc[:, -1].tolist())          # Calculate parent entropy
+        myTree.growMyTree(newData, 1, 0, parent, 0)             # Build the Tree
+
+        count = 0
+        # Traverse the tree for every piece of data and calculate the accuracy of our Tree
+        for j in range(len(newData)):
+            if int(newData.iat[j, -1]) == myTree.traverseTree(newData.iloc[[j]], myTree.root):
+                count += 1
+        print(filenames[i], "Tree has an accuracy of", 100*(count/len(newData)), "%")
+
+        # Create an image for the decision tree
+        #approximateImage(myTree, data[i], filenames[i])
 
     # Read in pokemon stats and add class label to last column
     data = pd.read_csv('pokemonStats.csv', skiprows=1, header=None)
@@ -252,35 +317,7 @@ def main():
         if data.iat[j, -1] == myTree.traverseTree(data.iloc[[j]], myTree.root):
             count += 1
             
-    print(100*(count/len(data)))
+    print("Pokemon Tree has an accuracy of", 100*(count/len(data)), "%")
 
 if __name__ == "__main__":
-    #main()
-
-    data1 = pd.read_csv('synthetic-3.csv', header=None)
-    
-    data = syntheticData(pd.read_csv('synthetic-3.csv', header=None), 10)
-    myTree = Tree(max_depth=3, num_attributes=20)     # Create a Tree
-    parent = entropy(data.iloc[:, -1].tolist())          # Calculate parent entropy
-    myTree.growMyTree(data, 1, 0, parent, 0)             # Build the Tree
-    im = approximateImage(myTree)
-    xValuesFail = []
-    yValuesFail = []
-    xValuesSuccess = []
-    yValuesSuccess = []
-    for i in range(len(data1)):
-        if int(data1.iat[i,2]) == 0:
-            xValuesFail.append(data1.iat[i,0])
-            yValuesFail.append(data1.iat[i,1])
-        else:
-            xValuesSuccess.append(data1.iat[i,0])
-            yValuesSuccess.append(data1.iat[i,1])
-    plt.plot(xValuesFail,yValuesFail,'o',color="#000000")
-    plt.plot(xValuesSuccess,yValuesSuccess,'o',color="#77d582")
-    plt.margins(x=0, y=0)
-    axes = plt.gca()
-    y_min, y_max = axes.get_ylim()
-    x_min, x_max = axes.get_xlim()
-
-    plt.imshow(im, extent=[x_min,x_max,y_min,y_max])
-    plt.show()
+    main()
